@@ -10,6 +10,8 @@ from fastapi import UploadFile, File
 from .utils import save_upload, extract_topics_from_file
 from fastapi.staticfiles import StaticFiles
 from .question_gen import generate_dummy_questions
+from sqlalchemy.orm import Session
+from .services import create_study_guide, add_topics, get_guide, get_topics, set_selected
 
 
 app = FastAPI(title="StudySync2")
@@ -81,15 +83,28 @@ def upload_page(request: Request):
     )
 
 @app.post("/upload", response_class=HTMLResponse)
-def upload_file(request: Request, file: UploadFile = File(...)):
+def upload_file(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    # save file
     path = save_upload(file)
     topics = extract_topics_from_file(path)
 
-    # remember latest upload in the session for dashboard & questions
+    # remember in session for dashboard/questions
     request.session["last_upload_path"] = path
     request.session["last_upload_name"] = os.path.basename(path)
 
-    return RedirectResponse("/questions", status_code=303)
+    # tie to current user if logged in
+    uid = request.session.get("user_id")
+
+    # create study guide row
+    guide = create_study_guide(db, user_id=uid, filename=path, original_name=file.filename)
+
+    # add extracted topics
+    if topics:
+        add_topics(db, guide.id, topics)
+
+    # go to topics page
+    return RedirectResponse(f"/topics/{guide.id}", status_code=303)
+
 
 
 @app.get("/questions", response_class=HTMLResponse)
@@ -105,5 +120,62 @@ def questions(request: Request):
     return templates.TemplateResponse(
         "questions.html",
         {"request": request, "user": None, "questions": qs}
+    )
+
+@app.get("/topics/{guide_id}", response_class=HTMLResponse)
+def topics_page(guide_id: int, request: Request, db: Session = Depends(get_db)):
+    guide = get_guide(db, guide_id)
+    if not guide:
+        return RedirectResponse("/upload", status_code=303)
+    topics = get_topics(db, guide_id)
+    # pass logged-in user (optional greeting in navbar)
+    from .models import User
+    user = None
+    uid = request.session.get("user_id")
+    if uid:
+        user = db.query(User).filter(User.id == uid).first()
+    return templates.TemplateResponse("topics.html", {"request": request, "user": user, "guide": guide, "topics": topics})
+
+@app.post("/topics/{guide_id}/save")
+async def save_topics(guide_id: int, request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    checked = {k for k in form.keys() if k.startswith("topic_")}
+    ids_checked = {int(k.split("_")[1]) for k in checked}
+
+    # update all topics
+    for t in get_topics(db, guide_id):
+        set_selected(db, t.id, t.id in ids_checked)
+
+    return RedirectResponse(f"/topics/{guide_id}", status_code=303)
+
+@app.post("/topics/{guide_id}/add")
+async def add_manual(guide_id: int, request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    raw = (form.get("raw_topics") or "").strip()
+    if raw:
+        titles = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+        add_topics(db, guide_id, titles)
+    return RedirectResponse(f"/topics/{guide_id}", status_code=303)
+
+@app.get("/questions/{topic_id}", response_class=HTMLResponse)
+def questions_for_topic(topic_id: int, request: Request, db: Session = Depends(get_db)):
+    from .models import Topic
+    t = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not t:
+        return RedirectResponse("/upload", status_code=303)
+
+    # build questions from this single topic
+    qs = generate_dummy_questions([t.title], num_questions=5)
+
+    # optional user in navbar
+    from .models import User
+    user = None
+    uid = request.session.get("user_id")
+    if uid:
+        user = db.query(User).filter(User.id == uid).first()
+
+    return templates.TemplateResponse(
+        "questions.html",
+        {"request": request, "user": user, "questions": qs}
     )
 

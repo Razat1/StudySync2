@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Practice Questions</h2>
+
+{% if questions %}
+  <ul>
+  {% for q in questions %}
+    <li>{{ q }}</li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p>No topics found. Please <a href="/upload">upload a syllabus</a> first.</p>
+{% endif %}
+{% endblock %}

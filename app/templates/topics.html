@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Topics for {{ guide.original_name }}</h2>
+
+{% if topics %}
+<form method="post" action="/topics/{{ guide.id }}/save">
+  <ul>
+    {% for t in topics %}
+      <li>
+        <label>
+          <input type="checkbox" name="topic_{{ t.id }}" {% if t.selected %}checked{% endif %}>
+          {{ t.title }}
+        </label>
+        <a href="/questions/{{ t.id }}">Generate questions</a>
+      </li>
+    {% endfor %}
+  </ul>
+  <button type="submit">Save selection</button>
+</form>
+{% else %}
+  <p>No topics detected yet for this guide.</p>
+{% endif %}
+
+<h3>Add topics manually</h3>
+<form method="post" action="/topics/{{ guide.id }}/add">
+  <textarea name="raw_topics" rows="6" cols="60" placeholder="One topic per line"></textarea><br>
+  <button type="submit">Add</button>
+</form>
+{% endblock %}

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>{{ title or "StudySync2" }}</title>
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <header>
@@ -11,6 +12,8 @@
       {% if user %}
         <span>Hi, {{ user.display_name }}</span>
         <a href="/">Home</a>
+        <a href="/upload">Upload Syllabus</a>
+        <a href="/questions">Practice Questions</a>
         <a href="/logout">Logout</a>
       {% else %}
         <a href="/login">Login</a>
