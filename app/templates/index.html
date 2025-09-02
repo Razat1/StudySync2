@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  {% if user %}
+    <h2>Welcome, {{ user.display_name }} 🎉</h2>
+    <p>You are logged in.</p>
+  {% else %}
+    <h2>Welcome to StudySync2 🚀</h2>
+    <p>Please <a href="/signup">sign up</a> or <a href="/login">log in</a>.</p>
+  {% endif %}
+{% endblock %}
