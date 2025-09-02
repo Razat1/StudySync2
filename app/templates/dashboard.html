@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Dashboard</h2>
+
+{% if user %}
+  <p>Welcome back, <strong>{{ user.display_name }}</strong> 🎉</p>
+
+  <div style="margin:1rem 0;">
+    <a href="/upload">Upload a new syllabus</a> ·
+    <a href="/questions">Practice questions</a>
+  </div>
+
+  {% if filename %}
+    <p><strong>Latest upload:</strong> {{ filename }}</p>
+  {% else %}
+    <p>No syllabus uploaded yet. <a href="/upload">Upload one now</a>.</p>
+  {% endif %}
+{% else %}
+  <p>Please <a href="/login">log in</a>.</p>
+{% endif %}
+{% endblock %}
