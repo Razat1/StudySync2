@@ -83,29 +83,33 @@ def upload_page(request: Request):
     )
 
 @app.post("/upload", response_class=HTMLResponse)
-def upload_file(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    # save file
+def upload_file(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    # 1) Save file
     path = save_upload(file)
-    topics = extract_topics_from_file(path)
 
-    # remember in session for dashboard/questions
+    # 2) Extract topics (Maths section only for now)
+    topics = extract_topics_from_file(path, focus_subject="Mathematics")
+
+    # 3) Remember in session
     request.session["last_upload_path"] = path
     request.session["last_upload_name"] = os.path.basename(path)
 
-    # tie to current user if logged in
+    # 4) Tie to current user if logged in
     uid = request.session.get("user_id")
 
-    # create study guide row
+    # 5) Create study guide row
     guide = create_study_guide(db, user_id=uid, filename=path, original_name=file.filename)
 
-    # add extracted topics
+    # 6) Add extracted topics
     if topics:
         add_topics(db, guide.id, topics)
 
-    # go to topics page
+    # 7) Redirect to topics page
     return RedirectResponse(f"/topics/{guide.id}", status_code=303)
-
-
 
 @app.get("/questions", response_class=HTMLResponse)
 def questions(request: Request):
